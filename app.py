@@ -15,10 +15,13 @@ MODEL_PATH = "deeplabv3_mobilenet_v3.pth"
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}")
 
-# 🔹 Betöltjük a mentett modellt
+# Modell betöltése helyi fájlból
 print("🔹 Modell betöltése...")
-model = models.segmentation.deeplabv3_mobilenet_v3_large(weights=None)
-model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+model = models.segmentation.deeplabv3_mobilenet_v3_large(pretrained=False)
+
+# 🔹 Betöltés úgy, hogy figyelmen kívül hagyja a nem ismert kulcsokat
+model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')), strict=False)
+
 model.eval()
 print("✅ Modell sikeresen betöltve!")
 
