@@ -29,8 +29,9 @@ def segment_walls(image_path):
     transform = T.Compose([T.ToTensor()])
     image_tensor = transform(image).unsqueeze(0)
 
-    with torch.no_grad():
-        output = model(image_tensor)["out"][0]
+   with torch.no_grad():
+    torch.cuda.empty_cache()  # Felszabadítja a memóriát
+    output = model(image_tensor)["out"][0]
 
     mask = output.argmax(0).byte().numpy()
     WALL_CLASS_ID = 15  # DeepLabV3+ fal osztályazonosítója
