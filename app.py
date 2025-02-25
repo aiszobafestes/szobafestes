@@ -15,14 +15,15 @@ MODEL_PATH = "deeplabv3_resnet50.pth"  # 🔹 Kisebb modell a memóriaoptimaliz�
 # Modell letöltése, ha nincs meg a szerveren
 if not os.path.exists(MODEL_PATH):
     print("🔹 A modell nem található, letöltés folyamatban...")
-    model = models.segmentation.deeplabv3_resnet50(pretrained=True)  # 🔹 Letöltés a PyTorch szerveréről
-    torch.save(model.state_dict(), MODEL_PATH)  # 🔹 Mentés fájlba
+    model = models.segmentation.deeplabv3_resnet50(weights=models.segmentation.DeepLabV3_ResNet50_Weights.DEFAULT)  
+    torch.save(model.state_dict(), MODEL_PATH)  # 🔹 Modell mentése fájlba
     print("✅ Modell letöltve és mentve!")
 
 # Modell betöltése helyi fájlból
 print("🔹 Modell betöltése...")
-model = models.segmentation.deeplabv3_resnet50(pretrained=False)
+model = models.segmentation.deeplabv3_resnet50(weights=None)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+model.to(torch.device('cpu'))  # 🔹 Csak CPU-t használunk a memóriafogyasztás csökkentése érdekében
 model.eval()
 print("✅ Modell sikeresen betöltve!")
 
@@ -32,7 +33,7 @@ def segment_walls(image_path):
     transform = T.Compose([T.ToTensor()])
     image_tensor = transform(image).unsqueeze(0)
 
-    with torch.no_grad():
+    with torch.inference_mode():  # 🔹 Optimalizált memóriahasználat
         torch.cuda.empty_cache()  # 🔹 Memóriaoptimalizálás
         output = model(image_tensor)["out"][0]
 
@@ -55,6 +56,9 @@ def process_image():
 
     # Kép beolvasása
     image = cv2.imread(filename)
+    if image is None:
+        return "Hiba: Nem sikerült beolvasni a képet!", 400
+
     mask = segment_walls(filename)
 
     # Szín átalakítása HEX → RGB → BGR (OpenCV miatt)
@@ -62,7 +66,7 @@ def process_image():
         color_rgb = tuple(int(color_hex[i:i+2], 16) for i in (1, 3, 5))
         color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
     except ValueError:
-        return "Hiba: Hibás színkód!", 400
+        return "Hiba: Hibás színkód! Használj pl. '#FF5733' formátumot.", 400
 
     # Falak átszínezése
     alpha = 0.6  # Átlátszósági érték
