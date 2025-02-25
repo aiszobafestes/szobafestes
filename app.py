@@ -9,21 +9,17 @@ import os
 
 app = Flask(__name__)
 
-# Modell fájl elérési útvonala
-MODEL_PATH = "deeplabv3_resnet50.pth"  # 🔹 Kisebb modell a memóriaoptimalizálás érdekében
+# 🔹 Modell fájl elérési útvonala (ez a fájl már fent kell legyen a szerveren)
+MODEL_PATH = "deeplabv3_resnet50.pth"
 
-# Modell letöltése, ha nincs meg a szerveren
+# 🔹 Ellenőrizzük, hogy a modellfájl létezik-e
 if not os.path.exists(MODEL_PATH):
-    print("🔹 A modell nem található, letöltés folyamatban...")
-    model = models.segmentation.deeplabv3_resnet50(weights=models.segmentation.DeepLabV3_ResNet50_Weights.DEFAULT)  
-    torch.save(model.state_dict(), MODEL_PATH)  # 🔹 Modell mentése fájlba
-    print("✅ Modell letöltve és mentve!")
+    raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}. Töltsd fel a szerverre!")
 
-# Modell betöltése helyi fájlból
+# 🔹 Modell betöltése helyi fájlból (nem töltjük le minden indításkor!)
 print("🔹 Modell betöltése...")
-model = models.segmentation.deeplabv3_resnet50(weights=None)
+model = models.segmentation.deeplabv3_resnet50(pretrained=False)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
-model.to(torch.device('cpu'))  # 🔹 Csak CPU-t használunk a memóriafogyasztás csökkentése érdekében
 model.eval()
 print("✅ Modell sikeresen betöltve!")
 
@@ -33,8 +29,7 @@ def segment_walls(image_path):
     transform = T.Compose([T.ToTensor()])
     image_tensor = transform(image).unsqueeze(0)
 
-    with torch.inference_mode():  # 🔹 Optimalizált memóriahasználat
-        torch.cuda.empty_cache()  # 🔹 Memóriaoptimalizálás
+    with torch.no_grad():
         output = model(image_tensor)["out"][0]
 
     mask = output.argmax(0).byte().numpy()
@@ -56,19 +51,16 @@ def process_image():
 
     # Kép beolvasása
     image = cv2.imread(filename)
-    if image is None:
-        return "Hiba: Nem sikerült beolvasni a képet!", 400
-
     mask = segment_walls(filename)
 
-    # Szín átalakítása HEX → RGB → BGR (OpenCV miatt)
+    # 🔹 Szín átalakítása HEX → RGB → BGR (OpenCV miatt)
     try:
         color_rgb = tuple(int(color_hex[i:i+2], 16) for i in (1, 3, 5))
         color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
     except ValueError:
-        return "Hiba: Hibás színkód! Használj pl. '#FF5733' formátumot.", 400
+        return "Hiba: Hibás színkód!", 400
 
-    # Falak átszínezése
+    # 🔹 Falak átszínezése
     alpha = 0.6  # Átlátszósági érték
     colored_image = image.copy()
     for c in range(3):
@@ -78,7 +70,7 @@ def process_image():
             image[:, :, c]
         )
 
-    # Mentés és küldés
+    # 🔹 Mentés és küldés
     output_filename = "output.jpg"
     cv2.imwrite(output_filename, colored_image)
     return send_file(output_filename, mimetype='image/jpeg')
