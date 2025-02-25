@@ -10,7 +10,7 @@ import os
 app = Flask(__name__)
 
 # Modell fájl elérési útvonala
-MODEL_PATH = "deeplabv3_resnet101.pth"
+model = models.segmentation.deeplabv3_resnet50(pretrained=False)
 
 # Ellenőrizzük, hogy a modellfájl létezik-e
 if not os.path.exists(MODEL_PATH):
