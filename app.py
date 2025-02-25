@@ -10,14 +10,17 @@ import os
 app = Flask(__name__)
 
 # Modell fájl elérési útvonala
-MODEL_PATH = "deeplabv3_resnet50.pth"  # 🔹 A kisebb modell használata a memóriaoptimalizálás érdekében
+MODEL_PATH = "deeplabv3_resnet50.pth"  # 🔹 Kisebb modell a memóriaoptimalizálás érdekében
 
-# Ellenőrizzük, hogy a modellfájl létezik-e
+# Modell letöltése, ha nincs meg a szerveren
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}. Győződj meg róla, hogy a fájl a szerveren van.")
+    print("🔹 A modell nem található, letöltés folyamatban...")
+    model = models.segmentation.deeplabv3_resnet50(pretrained=True)  # 🔹 Letöltés a PyTorch szerveréről
+    torch.save(model.state_dict(), MODEL_PATH)  # 🔹 Mentés fájlba
+    print("✅ Modell letöltve és mentve!")
 
 # Modell betöltése helyi fájlból
-print("🔹 Modell betöltése a fájlból...")
+print("🔹 Modell betöltése...")
 model = models.segmentation.deeplabv3_resnet50(pretrained=False)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
 model.eval()
@@ -58,7 +61,7 @@ def process_image():
     try:
         color_rgb = tuple(int(color_hex[i:i+2], 16) for i in (1, 3, 5))
         color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
-    except:
+    except ValueError:
         return "Hiba: Hibás színkód!", 400
 
     # Falak átszínezése
