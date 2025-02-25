@@ -10,15 +10,15 @@ import os
 app = Flask(__name__)
 
 # Modell fájl elérési útvonala
-model = models.segmentation.deeplabv3_resnet50(pretrained=False)
+MODEL_PATH = "deeplabv3_resnet50.pth"  # 🔹 A kisebb modell használata a memóriaoptimalizálás érdekében
 
 # Ellenőrizzük, hogy a modellfájl létezik-e
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}. Győződj meg róla, hogy a fájl a szerveren van.")
 
-# Modell betöltése helyi fájlból (nem töltjük le minden indításkor)
+# Modell betöltése helyi fájlból
 print("🔹 Modell betöltése a fájlból...")
-model = models.segmentation.deeplabv3_resnet101(pretrained=False)
+model = models.segmentation.deeplabv3_resnet50(pretrained=False)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
 model.eval()
 print("✅ Modell sikeresen betöltve!")
@@ -29,9 +29,9 @@ def segment_walls(image_path):
     transform = T.Compose([T.ToTensor()])
     image_tensor = transform(image).unsqueeze(0)
 
-   with torch.no_grad():
-    torch.cuda.empty_cache()  # Felszabadítja a memóriát
-    output = model(image_tensor)["out"][0]
+    with torch.no_grad():
+        torch.cuda.empty_cache()  # 🔹 Memóriaoptimalizálás
+        output = model(image_tensor)["out"][0]
 
     mask = output.argmax(0).byte().numpy()
     WALL_CLASS_ID = 15  # DeepLabV3+ fal osztályazonosítója
