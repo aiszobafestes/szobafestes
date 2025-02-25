@@ -9,16 +9,15 @@ import os
 
 app = Flask(__name__)
 
-# 🔹 Modell fájl elérési útvonala (ez a fájl már fent kell legyen a szerveren)
-MODEL_PATH = "deeplabv3_resnet50.pth"
+MODEL_PATH = "deeplabv3_mobilenet_v3.pth"
 
-# 🔹 Ellenőrizzük, hogy a modellfájl létezik-e
+# 🔹 Ellenőrizd, hogy a modellfájl elérhető-e
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}. Töltsd fel a szerverre!")
+    raise FileNotFoundError(f"❌ A modell nem található: {MODEL_PATH}")
 
-# 🔹 Modell betöltése helyi fájlból (nem töltjük le minden indításkor!)
+# 🔹 Betöltjük a mentett modellt
 print("🔹 Modell betöltése...")
-model = models.segmentation.deeplabv3_resnet50(pretrained=False)
+model = models.segmentation.deeplabv3_mobilenet_v3_large(weights=None)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
 model.eval()
 print("✅ Modell sikeresen betöltve!")
